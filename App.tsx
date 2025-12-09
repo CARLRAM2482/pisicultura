@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import BatchManager from './components/BatchManager';
 import WaterMonitor from './components/WaterMonitor';
 import Advisor from './components/Advisor';
-import { ViewState, Batch, WaterQualityLog, FishStage } from './types';
+import FinanceManager from './components/FinanceManager';
+import { ViewState, Batch, WaterQualityLog, FishStage, Expense } from './types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Mock Initial Data
@@ -37,38 +38,71 @@ const INITIAL_LOGS: WaterQualityLog[] = [
   { id: '4', date: '2023-10-23', tankId: 'Tanque 1', ph: 7.0, temperature: 26.2, oxygen: 5.0, ammonia: 0.01 },
 ];
 
+const INITIAL_EXPENSES: Expense[] = [
+  { id: '1', category: 'Feed', amount: 450.00, date: '2023-10-05', description: 'Compra de concentrado inicio 45%' },
+  { id: '2', category: 'Fry', amount: 300.00, date: '2023-10-01', description: 'Compra de 2000 alevines revertidos' },
+  { id: '3', category: 'Energy', amount: 120.50, date: '2023-10-30', description: 'Pago de luz bombas aireación' },
+];
+
 const App: React.FC = () => {
   const [currentView, setView] = useState<ViewState>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // App State
-  const [batches, setBatches] = useState<Batch[]>(INITIAL_BATCHES);
-  const [waterLogs, setWaterLogs] = useState<WaterQualityLog[]>(INITIAL_LOGS);
+  // App State with LocalStorage persistence
+  const [batches, setBatches] = useState<Batch[]>(() => {
+    const saved = localStorage.getItem('tm_batches');
+    return saved ? JSON.parse(saved) : INITIAL_BATCHES;
+  });
+
+  const [waterLogs, setWaterLogs] = useState<WaterQualityLog[]>(() => {
+    const saved = localStorage.getItem('tm_waterLogs');
+    return saved ? JSON.parse(saved) : INITIAL_LOGS;
+  });
+
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const saved = localStorage.getItem('tm_expenses');
+    return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
+  });
+
+  // Effects to save data whenever state changes
+  useEffect(() => {
+    localStorage.setItem('tm_batches', JSON.stringify(batches));
+  }, [batches]);
+
+  useEffect(() => {
+    localStorage.setItem('tm_waterLogs', JSON.stringify(waterLogs));
+  }, [waterLogs]);
+
+  useEffect(() => {
+    localStorage.setItem('tm_expenses', JSON.stringify(expenses));
+  }, [expenses]);
 
   const addWaterLog = (log: WaterQualityLog) => {
     setWaterLogs([...waterLogs, log]);
   };
 
+  const addExpense = (expense: Expense) => {
+    setExpenses([...expenses, expense]);
+  };
+
+  const deleteExpense = (id: string) => {
+    setExpenses(expenses.filter(e => e.id !== id));
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'DASHBOARD':
-        return <Dashboard batches={batches} logs={waterLogs} />;
+        return <Dashboard batches={batches} logs={waterLogs} expenses={expenses} />;
       case 'BATCHES':
         return <BatchManager batches={batches} setBatches={setBatches} />;
       case 'WATER':
         return <WaterMonitor logs={waterLogs} addLog={addWaterLog} />;
       case 'FINANCE':
-        return (
-          <div className="flex flex-col items-center justify-center h-96 text-center p-8">
-            <h2 className="text-2xl font-bold text-slate-800">Módulo Financiero</h2>
-            <p className="text-slate-500 mt-2">Próximamente: Calculadora de ROI y Costos Operativos.</p>
-            <p className="text-sm text-blue-500 mt-4">Tip: Usa el Asesor IA para estimar costos mientras tanto.</p>
-          </div>
-        );
+        return <FinanceManager expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} />;
       case 'ADVISOR':
-        return <Advisor batches={batches} waterLogs={waterLogs} />;
+        return <Advisor batches={batches} waterLogs={waterLogs} expenses={expenses} />;
       default:
-        return <Dashboard batches={batches} logs={waterLogs} />;
+        return <Dashboard batches={batches} logs={waterLogs} expenses={expenses} />;
     }
   };
 
@@ -91,10 +125,11 @@ const App: React.FC = () => {
 };
 
 // Simple Dashboard Component
-const Dashboard = ({ batches, logs }: { batches: Batch[], logs: WaterQualityLog[] }) => {
+const Dashboard = ({ batches, logs, expenses }: { batches: Batch[], logs: WaterQualityLog[], expenses: Expense[] }) => {
   const totalFish = batches.reduce((acc, b) => acc + b.currentQuantity, 0);
   const totalBiomass = batches.reduce((acc, b) => acc + ((b.currentQuantity * b.averageWeight) / 1000), 0).toFixed(1);
   const activeTanks = new Set(batches.map(b => b.tankId)).size;
+  const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
 
   const pieData = batches.map(b => ({
       name: b.name,
@@ -109,7 +144,7 @@ const Dashboard = ({ batches, logs }: { batches: Batch[], logs: WaterQualityLog[
         <p className="text-slate-500">Visión general de la granja piscícola.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <p className="text-sm text-slate-500 font-medium">Población Total</p>
           <h3 className="text-3xl font-bold text-slate-800">{totalFish.toLocaleString()} <span className="text-sm font-normal text-slate-400">peces</span></h3>
@@ -121,6 +156,10 @@ const Dashboard = ({ batches, logs }: { batches: Batch[], logs: WaterQualityLog[
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <p className="text-sm text-slate-500 font-medium">Tanques Activos</p>
           <h3 className="text-3xl font-bold text-green-600">{activeTanks}</h3>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <p className="text-sm text-slate-500 font-medium">Gasto Total</p>
+          <h3 className="text-3xl font-bold text-slate-700">${totalExpenses.toLocaleString()}</h3>
         </div>
       </div>
 

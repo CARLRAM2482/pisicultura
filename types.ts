@@ -27,9 +27,11 @@ export interface WaterQualityLog {
   notes?: string;
 }
 
+export type ExpenseCategory = 'Feed' | 'Energy' | 'Labor' | 'Maintenance' | 'Fry' | 'Other';
+
 export interface Expense {
   id: string;
-  category: 'Feed' | 'Energy' | 'Labor' | 'Maintenance' | 'Fry';
+  category: ExpenseCategory;
   amount: number;
   date: string;
   description: string;

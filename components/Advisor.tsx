@@ -1,19 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getAquacultureAdvice } from '../services/geminiService';
-import { ChatMessage, Batch, WaterQualityLog } from '../types';
+import { ChatMessage, Batch, WaterQualityLog, Expense } from '../types';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 
 interface AdvisorProps {
   batches: Batch[];
   waterLogs: WaterQualityLog[];
+  expenses: Expense[];
 }
 
-const Advisor: React.FC<AdvisorProps> = ({ batches, waterLogs }) => {
+const Advisor: React.FC<AdvisorProps> = ({ batches, waterLogs, expenses }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       role: 'model',
-      text: 'Hola. Soy tu asistente experto en piscicultura de Tilapia. ¿En qué puedo ayudarte hoy? Puedo analizar tus lotes, calidad de agua o ayudarte a calcular raciones de alimento.'
+      text: 'Hola. Soy tu asistente experto en piscicultura de Tilapia. ¿En qué puedo ayudarte hoy? Puedo analizar tus lotes, calidad de agua, calcular raciones de alimento o revisar tus finanzas.'
     }
   ]);
   const [input, setInput] = useState('');
@@ -43,7 +44,7 @@ const Advisor: React.FC<AdvisorProps> = ({ batches, waterLogs }) => {
     setIsLoading(true);
 
     try {
-      const responseText = await getAquacultureAdvice(userMsg.text, { batches, waterLogs });
+      const responseText = await getAquacultureAdvice(userMsg.text, { batches, waterLogs, expenses });
       
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -65,10 +66,10 @@ const Advisor: React.FC<AdvisorProps> = ({ batches, waterLogs }) => {
   };
 
   const suggestions = [
-    "¿Cuál es la tasa de alimentación para alevines de 5g?",
+    "¿Cuál es la tasa de alimentación para alevines?",
     "Mi pH está en 5.5, ¿cómo lo subo?",
     "Calcula la fecha de cosecha estimada",
-    "¿Qué densidad de siembra recomiendas?"
+    "Analiza mis costos de alimentación"
   ];
 
   return (
@@ -132,7 +133,7 @@ const Advisor: React.FC<AdvisorProps> = ({ batches, waterLogs }) => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Escribe tu consulta sobre el cultivo..."
+            placeholder="Escribe tu consulta sobre el cultivo o finanzas..."
             className="flex-1 rounded-lg border-slate-200 border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
